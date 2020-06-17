@@ -1,0 +1,417 @@
+<html>
+<head>
+<!-- Required meta tags -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="data:image/x-icon;" rel="shortcut icon" />
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+<title>Dynamic JS</title>
+
+<script>
+    var params = {
+        'type': 'object',
+        'properties': {
+            'model': {
+                'type': 'string',
+                'label': 'Model',
+                'format': 'dropdown',
+                'options': [{
+                    'key': 'M1',
+                    'value': 'Model 1'
+                }, {
+                    'key': 'M2',
+                    'value': 'Model 2'
+                }]
+            }, 
+            'mode': {
+                'type': 'string',
+                'label': 'Mode',
+                'format': 'dropdown',
+                'options': [{
+                    'key': 'A',
+                    'value': 'Mode A'
+                }, {
+                    'key': 'B',
+                    'value': 'Mode B'
+                }]
+            },
+            'gender': {
+                'type': 'string',
+                'label': 'Gender',
+                'format': 'dropdown',
+                'options': [{
+                    'key': 'M',
+                    'value': 'Male'
+                }, {
+                    'key': 'F',
+                    'value': 'Female'
+                }]
+            },
+            'recommendations': {
+                'type': 'integer',
+                'format': 'dropdown',
+                'min': 5,
+                'max': 10,
+                'options': [{
+                    'key': 1,
+                    'value': 1
+                }, {
+                    'key': 2,
+                    'value': 2
+                }, {
+                    'key': 3,
+                    'value': 3
+                }, {
+                    'key': 4,
+                    'value': 4
+                }, {
+                    'key': 5,
+                    'value': 5
+                }]
+            },
+            "fieldBoolean": {
+                'type': 'boolean',
+                'label': 'Boolean Field'
+            },
+            "fieldCheckbox": {
+                'type': 'checkbox',
+                'label': 'Checkbox Field'
+            },
+            "fieldRadio": {
+                'type': 'radio',
+                'label': 'Radio Field',
+                'options': [{
+                    'key': 'One',
+                    'value': 'One'
+                }, {
+                    'key': 'Two',
+                    'value': 'Two'
+                }]
+            },
+            "fieldMultiline": {
+            	'type': 'string',
+            	'label': 'Multi Line',
+            	'format': 'multiline'
+            }
+        }
+
+    };
+
+    var schema = {
+        'items': [{
+            'type': 'section',
+            'items': [{
+                'type': 'field',
+                'ref': 'model'
+            }, {
+                'type':'field',
+                'ref': 'mode',
+                'actions': [{
+                	'action': 'updateOptions',
+                	'when': 'params.model === "M2"',
+                	'script': function(action, ctx) {
+                		return [{
+                			"key": "C",
+                			"value": "Mode C"
+                		}, {
+                			"key": "D",
+                			"value": "Mode D"
+                		}, {
+                			"key": "A",
+                			"value": "Mode A"
+                		}];
+                	}
+                }]
+            }, {
+                'type': 'field',
+                'ref': 'gender',
+                'hidden': 'true',
+                'actions': [{
+                	'action': 'show',
+                	'when': 'params.model !== "M1" && params.mode === "A"'
+                }, {
+                	'action': 'script',
+                	'when': 'params.mode === "B"',
+                	'script': function(action, ctx) {
+                		console.log("~~~ executed script ~~~ :)", action, ctx);
+                	}
+                }]
+            }, {
+                'type': 'field',
+                'ref': 'recommendations'
+            }, {
+                'type': 'field',
+                'ref': 'fieldBoolean'
+            }, {
+                'type': 'field',
+                'ref': 'fieldCheckbox'
+            }, {
+                'type': 'field',
+                'ref': 'fieldRadio'
+            }, {
+                'type': 'field',
+                'ref': 'fieldMultiline'
+            }]
+        }]
+    };
+
+    
+    function evaluateActionExpression(layoutItem, expression, formData) {
+    	var f = new Function('params', 'return ' + expression);
+    	var result = f(formData);
+
+    	return result;
+    }
+
+    function findField(frm, fieldId) {
+		var findRef = "[data-field='" + fieldId + "']";
+		var dataField = $(frm).find(findRef);
+		return dataField;
+    }
+
+    function execAction(action, ctx) {
+    	var field =  params.properties[ctx.layoutItem.ref];
+    	if (field) {
+			if (action.when) {
+				try {
+					if (action.action === 'show') {
+						execActionShow(action, ctx);
+					} else if (action.action === 'hide') {
+						execActionHide(action, ctx);
+					} else if (action.action === 'updateOptions' && field.format === 'dropdown') {
+						execActionUpdateOptions(action, ctx);
+					} else if (action.action === 'script') {
+						execActionScript(action, ctx);
+					}
+				} catch(err) {
+					console.log("Error evaluating action for ", action, ctx.layoutItem, err);
+				}
+
+			}
+    	}
+    }
+
+    function execActionShow(action, ctx) {
+    	var dataField = findField(ctx.form, ctx.layoutItem.ref);
+		if(evaluateActionExpression(ctx.layoutItem, action.when, ctx.formData)) {
+			dataField.removeClass('d-none');
+		} else {
+			dataField.addClass('d-none');
+		}
+    }
+
+    function execActionHide(action, ctx) {
+    	var dataField = findField(ctx.form, ctx.layoutItem.ref);
+		if(evaluateActionExpression(ctx.layoutItem, action.when, ctx.formData)) {
+			dataField.addClass('d-none');
+		} else {
+			dataField.removeClass('d-none');
+		}
+    }
+
+    function execActionUpdateOptions(action, ctx) {
+    	if (action.script && typeof action.script === 'function') {
+	    	var field =  params.properties[ctx.layoutItem.ref];
+	    	if (field) {
+		    	var dataField = findField(ctx.form, ctx.layoutItem.ref);
+		    	var selectField = dataField.find('select')[0];
+		    	$(selectField).empty();
+		    	var opts;
+				if(evaluateActionExpression(ctx.layoutItem, action.when, ctx.formData)) {
+					opts = action.script(action, ctx);
+				} else {
+					opts = field.options;
+				}
+				if (!opts) {
+					opts = [];
+				}
+
+				opts.forEach(function(opt) {
+					$(selectField).append('<option value="' + opt.key + '">' + opt.value + '</option>');
+				});
+			}
+		}
+    }
+
+    function execActionScript(action, ctx) {
+    	if (action.script && typeof action.script === 'function') {
+	    	action.script(action, ctx);
+    	}
+
+    }
+
+    function onFormChange(evt) {
+    	var frm = $(evt.target).closest('form');
+    	processFormChange(frm);
+    }
+
+    function processFormChange(frm) {
+    	var formData = $(frm).serializeObject();
+    	schema.items[0].items.forEach(function (item, idx) {
+    		if (item.actions) {
+    			item.actions.forEach(function (action) {
+    				var ctx = {
+    					'layoutSchema': schema,
+    					'paramsSchema': params,
+    					'layoutItem': item,
+    					'formData': formData,
+    					'form': frm
+    				};
+    				execAction(action, ctx);
+    			});
+    		}
+    	});
+    }
+
+    var templates = {
+        'string': `<div class="form-group row <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+                <label for="<%= fieldId %>" class="col-sm-2 col-form-label"><%= field.label || fieldId %></label>
+                <div class="col-sm-10">
+                	<input type="text" id="<%= fieldId %>" name="<%= fieldId %>" class="form-control"></input>
+                </div>
+            </div>`,
+        'string_dropdown': `<div class="form-group row <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+                <label for="<%= fieldId %>" class="col-sm-2 col-form-label"><%= field.label || fieldId %></label>
+                <div class="col-sm-10">
+                	<select id="<%= fieldId %>" name="<%= fieldId %>" class="form-control">
+                		<% _.forEach(field.options, function(opt) { %>
+	                		<option value="<%= opt.key %>"><%= opt.value %></option>
+	                	<% }); %>
+                	</select> 
+                </div>
+            </div>`,
+        'string_multiline': `<div class="form-group row <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+                <label for="<%= fieldId %>" class="col-sm-2 col-form-label"><%= field.label || fieldId %></label>
+                <div class="col-sm-10">
+                	<textarea id="<%= fieldId %>" name="<%= fieldId %>" class="form-control" rows="5"></textarea>
+                </div>
+            </div>`,
+        'integer': `<div class="form-group row <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+                <label for="<%= fieldId %>" class="col-sm-2 col-form-label"><%= field.label || fieldId %></label>
+                <div class="col-sm-10">
+	                <input type="number" id="<%= fieldId %>" name="<%= fieldId %>" class="form-control" min="<%= field.min %>" max="<%= field.max %>"></input>
+                </div>
+            </div>`,
+        'boolean': `<div class="form-group row <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+        		<div class="col-sm-2"><%= field.label || filedId %></div>
+        		<div class="col-sm-10">
+	        		<div class="form-check">
+		                <input type="checkbox" id="<%= fieldId %>" name="<%= fieldId %>" class="form-check-input"></input>
+		            </div>
+		         </div>
+            </div>`,
+        'checkbox': `<div class="form-group row <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+        		<div class="col-sm-2"><%= field.label || filedId %></div>
+        		<div class="col-sm-10">
+	        		<div class="form-check">
+		                <input type="checkbox" id="<%= fieldId %>" name="<%= fieldId %>" class="form-check-input"></input>
+		                <label class="form-check-label" for="<%= fieldId %>"><%= field.label || fieldId %></label>
+		            </div>
+		         </div>
+            </div>`,
+        'radio': `<fieldset class="form-group <%= !!fieldLayout.hidden?\"d-none\":\"\" %>" data-field="<%= fieldId %>">
+        		<div class="row">
+	        		<div class="col-sm-2"><%= field.label || filedId %></div>
+	        		<div class="col-sm-10">
+		        		<% _.forEach(field.options, function(opt) { %>
+			                <div class="form-check">
+			                    <input type="radio" id="<%= fieldId %>" name="<%= fieldId %>" class="form-check-input" value="<%= opt.key %>"></input>
+			                    <label class="form-check-label" for="<%= fieldId %>"><%= opt.value %></label>
+			                </div>
+		                <% }); %> 
+		            </div>
+	            </div>
+        	</fieldset>`
+    };
+
+    var templateFns = { };
+
+    function renderForm(renderTo) {
+        var el = document.getElementById(renderTo);
+        var frm = document.createElement('FORM');
+        el.appendChild(frm);
+        schema.items[0].items.forEach(function(item, idx) {
+            if (item.type === 'field') {
+                var field =  params.properties[item.ref];
+                var markup = createField(item.ref, field, item);
+                if (markup) {
+                    frm.innerHTML += markup;
+                }
+            } else {
+                console.log('Unsupported item type', item);
+            }
+            $("#" + renderTo + " form :input").on('change', onFormChange);
+        });
+        processFormChange(frm);
+    }
+
+    function createField(fieldId, field, fieldLayout) {
+        var templateFn = getFieldTemplateFunction(field);
+        if (templateFn) {
+            var markup = templateFn({'fieldId': fieldId, 'field': field, 'fieldLayout': fieldLayout});
+            return markup;
+        }
+    }
+
+    function getFieldTemplateFunction(field) {
+        var templateName = field.type;
+        var altTemplateName;
+        if (field.format) {
+            altTemplateName = templateName + '_' + field.format;
+        }
+
+        var templateFn;
+        if(altTemplateName && templateFns[altTemplateName]) {
+            templateFn = templateFns[altTemplateName];
+        } else if (templateFns[templateName]) {
+            templateFn = templateFns[templateName];
+        }
+
+        if (!templateFn) {
+            if (altTemplateName && templates[altTemplateName]) {
+                templateFn = _.template(templates[altTemplateName]);
+                templateFns[altTemplateName] = templateFn;
+            } else if (templates[templateName]) {
+                templateFn = _.template(templates[templateName]);
+                templateFns[templateName] = templateFn;
+            }
+        }
+
+        return templateFn;
+    }
+
+</script>
+</head>
+<body onload="renderForm('dynForm')">
+    <div id="dynForm" class="container">
+        <h2>Dynamic Form</h2>
+    </div>
+
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/3.3.0/lodash.min.js"></script>
+    <script>
+		(function ($) {
+			$.fn.serializeObject = function() {
+		        var o = {};
+		        var a = this.serializeArray();
+		        $.each(a, function() {
+		            if (o[this.name]) {
+		                if (!o[this.name].push) {
+		                    o[this.name] = [o[this.name]];
+		                }
+		                o[this.name].push(this.value || '');
+		            } else {
+		                o[this.name] = this.value || '';
+		            }
+		        });
+		        return o;
+		    };
+		} (jQuery));
+    </script>
+</body>
+</html>
